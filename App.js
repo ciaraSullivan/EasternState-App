@@ -1,16 +1,16 @@
 import React from "react"
-import { StyleSheet, Text, View, Image } from "react-native"
-import Audio from "./components/AudioComponent"
+import { Image, TouchableOpacity } from "react-native"
+import AudioController from "./components/AudioComponent"
 import FAQ from "./components/FAQComponent"
 import Map from "./components/MapComponent"
 import { createBottomTabNavigator } from "react-navigation-tabs"
 import { createAppContainer } from "react-navigation"
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaProvider } from "react-native-safe-area-context"
 import { Header, Icon } from "react-native-elements"
 
 const TabNavigator = createBottomTabNavigator(
 	{
-		Audio: Audio,
+		Audio: AudioController,
 		FAQ: FAQ,
 		Map: Map,
 	},
@@ -39,18 +39,28 @@ const TabNavigator = createBottomTabNavigator(
 const AppNavigator = createAppContainer(TabNavigator)
 
 export default function App() {
+	const renderCustomIconA = () => {
+		return (
+			<TouchableOpacity>
+				<Image
+					style={{ height: 70, width: 225, paddingVertical: 5 }}
+					source={require("./assets/ESPLogo.jpg")}
+				/>
+			</TouchableOpacity>
+		)
+	}
+
 	return (
 		<SafeAreaProvider>
 			<Header
 				rightComponent={{ icon: "settings", style: { color: "#000" } }}
-				leftComponent={{
-					text: "EASTERN STATE PENITENTIARY",
-					style: { color: "#000" },
-				}}
-				backgroundImage='./assets/ESP_LogoBlackText.jpg'
+				rightContainerStyle={{ flex: 1 }}
+				leftComponent={() => renderCustomIconA()}
+				leftContainerStyle={{ flex: 8 }}
 				containerStyle={{
 					justifyContent: "space-around",
 					backgroundColor: "white",
+					height: 125,
 				}}
 			/>
 			<AppNavigator />

@@ -10,8 +10,10 @@ import {
 	TextInput,
 	Keyboard,
 	TouchableWithoutFeedback,
+	FlatList,
 } from "react-native"
 import { Icon, Input } from "react-native-elements"
+import { Audio } from "expo-av"
 
 import AudioStopList from "../assets/audioStops"
 import BookStopList from "../assets/bookStops"
@@ -26,11 +28,100 @@ const DismissKeyboardHOC = (Comp) => {
 const DismissKeyboardView = DismissKeyboardHOC(View)
 
 class AudioPlayer extends React.Component {
+	constructor(props) {
+		super(props)
+		this.state = {
+			selectedStop: { name: " ", source: " ", number: " " },
+			playbackObj: null,
+			soundObj: null,
+		}
+	}
+
+	componentDidUpdate(prevProps) {
+		if (this.props.stop !== null && this.props.stop !== prevProps.stop) {
+			let findStop = this.props.tour.filter((stop) => stop.number == this.props.stop)[0]
+
+			this.setState({ selectedStop: findStop })
+		}
+	}
+
+	handlePlay = async () => {
+		if (this.state.soundObj === null) {
+			const playbackObj = new Audio.Sound()
+			const status = await playbackObj.loadAsync(
+				{
+					uri: this.state.selectedStop.source,
+				},
+				{ shouldPlay: true }
+			)
+			return this.setState({ ...this.state, playbackObj: playbackObj, soundObj: status })
+		} else if (this.state.soundObj.uri !== this.state.selectedStop.source) {
+			const status = await this.state.playbackObj.setStatusAsync({ shouldPlay: false })
+
+			const playbackObj = new Audio.Sound()
+			const Newstatus = await playbackObj.loadAsync(
+				{
+					uri: this.state.selectedStop.source,
+				},
+				{ shouldPlay: true }
+			)
+			return this.setState({ ...this.state, playbackObj: playbackObj, soundObj: Newstatus })
+		}
+
+		if (this.state.soundObj.isLoaded && this.state.soundObj.isPlaying) {
+			console.log("audio is already playing")
+		} else if (this.state.soundObj.isLoaded && !this.state.soundObj.isPlaying) {
+			const status = await this.state.playbackObj.playAsync()
+			return this.setState({ ...this.state, soundObj: status })
+			console.log("sound Obj: ", status)
+		}
+	}
+
+	handlePause = async () => {
+		if (this.state.soundObj.isPlaying) {
+			const status = await this.state.playbackObj.setStatusAsync({ shouldPlay: false })
+			return this.setState({ ...this.state, soundObj: status })
+		} else {
+			console.log("audio is paused already")
+		}
+	}
+
 	render() {
 		return (
-			<View>
-				<Text>AudioPlayer</Text>
-				<Text>Audio Stop: {this.props.stop}</Text>
+			<View style={{ flex: 1, paddingTop: 100 }}>
+				<Text style={{ textAlign: "center", fontSize: 30, justifyContent: "center" }}>
+					{this.state.selectedStop.name}
+				</Text>
+				<View style={{ flex: 1, flexDirection: "row", padding: 10 }}>
+					<TouchableOpacity
+						onPress={this.handlePlay}
+						style={{
+							alignItems: "center",
+							backgroundColor: "green",
+							justifyContent: "center",
+							height: 50,
+							padding: 5,
+							margin: 10,
+							flex: 1,
+						}}
+					>
+						<Icon name='ios-play' type='ionicon' color='white' />
+					</TouchableOpacity>
+					<TouchableOpacity
+						onPress={this.handlePause}
+						style={{
+							alignItems: "center",
+							backgroundColor: "red",
+							justifyContent: "center",
+							height: 50,
+							padding: 5,
+							margin: 10,
+							flex: 1,
+						}}
+					>
+						<Icon name='ios-pause' type='ionicon' color='white' />
+					</TouchableOpacity>
+				</View>
 			</View>
 		)
 	}
@@ -55,16 +146,34 @@ class BookPlayer extends React.Component {
 	render() {
 		return (
 			<SafeAreaView>
-				<ScrollView>
-					<Text>{this.state.selectedStop.name}</Text>
-					<Text>{this.state.selectedStop.content}</Text>
-				</ScrollView>
+				<Text style={{ fontSize: 30, fontWeight: "bold" }}>
+					{this.state.selectedStop.name}
+				</Text>
+				<View
+					style={{
+						marginBottom: 100,
+						height: 425,
+						borderColor: "grey",
+						borderWidth: 5,
+						borderStyle: "solid",
+					}}
+				>
+					<FlatList
+						data={this.state.selectedStop.content}
+						keyExtractor={(item) => item.number}
+						renderItem={({ item }) => (
+							<View style={{ margin: 10 }}>
+								<Text style={{ fontSize: 20, lineHeight: 22 }}>{item}</Text>
+							</View>
+						)}
+					/>
+				</View>
 			</SafeAreaView>
 		)
 	}
 }
 
-class Audio extends React.Component {
+class AudioController extends React.Component {
 	constructor(props) {
 		super(props)
 		this.state = {
@@ -104,7 +213,7 @@ class Audio extends React.Component {
 		}
 	}
 
-	whichOne() {
+	whichComp() {
 		if (this.state.audioTrue) {
 			return <AudioPlayer stop={this.state.stop} tour={this.state.content.audio} />
 		} else {
@@ -113,36 +222,71 @@ class Audio extends React.Component {
 	}
 
 	changeIcon() {
-		this.setState({ audioTrue: !this.state.audioTrue })
+		this.setState({ audioTrue: !this.state.audioTrue, stop: "", numberSearch: null })
 	}
 
 	render() {
 		return (
 			<SafeAreaView>
-				<Text>Enter a number:</Text>
-				<DismissKeyboardView>
-					<TextInput
-						value={this.state.numberSearch}
-						onChangeText={(val) => this.setState({ numberSearch: val })}
-						keyboardType='numeric'
-					/>
-				</DismissKeyboardView>
-				<TouchableOpacity
-					onPress={() => {
-						this.searchFiles()
+				<Text style={{ textAlign: "center", fontSize: 25, paddingTop: 20 }}>
+					Enter a number:
+				</Text>
+				<TextInput
+					value={this.state.numberSearch}
+					onChangeText={(val) => this.setState({ numberSearch: val })}
+					keyboardType='numeric'
+					style={{
+						borderWidth: 3,
+						borderColor: "black",
+						borderStyle: "solid",
+						marginHorizontal: 100,
+						marginVertical: 5,
+						paddingHorizontal: 100,
+						paddingVertical: 10,
 					}}
-				>
-					<Text>Enter</Text>
-				</TouchableOpacity>
-				<Icon
-					name={this.state.audioTrue ? "ios-book" : "ios-headset"}
-					type='ionicon'
-					onPress={() => this.changeIcon()}
 				/>
-				{this.whichOne()}
+				<View style={{ flex: 1, flexDirection: "row", margin: 10 }}>
+					<TouchableOpacity
+						onPress={() => {
+							this.searchFiles()
+						}}
+						style={{
+							flex: 1,
+							backgroundColor: "black",
+							height: 35,
+							padding: 5,
+							marginHorizontal: 15,
+							justifyContent: "center",
+							alignItems: "center",
+						}}
+					>
+						<Text style={{ color: "white" }}>Enter</Text>
+					</TouchableOpacity>
+					<TouchableOpacity
+						onPress={() => {
+							this.changeIcon()
+						}}
+						style={{
+							flex: 1,
+							backgroundColor: "black",
+							marginHorizontal: 15,
+							height: 35,
+							padding: 5,
+							justifyContent: "center",
+							alignItems: "center",
+						}}
+					>
+						<Icon
+							name={this.state.audioTrue ? "ios-book" : "ios-headset"}
+							type='ionicon'
+							color='white'
+						/>
+					</TouchableOpacity>
+				</View>
+				<View style={{ paddingTop: 60 }}>{this.whichComp()}</View>
 			</SafeAreaView>
 		)
 	}
 }
 
-export default Audio
+export default AudioController
